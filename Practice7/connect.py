@@ -1,11 +1,11 @@
 # connect.py
 import psycopg2
+from config import DB_CONFIG
 
 def get_connection():
-    return psycopg2.connect(
-        dbname="phonebook_db",
-        user="phone_user",
-        password="ayau2705",
-        host="localhost",
-        port="5432"
-    )
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        return conn
+    except Exception as e:
+        print("Қосылу қатесі:", e)
+        return None

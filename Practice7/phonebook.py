@@ -1,123 +1,137 @@
 # phonebook.py
 import csv
+import os
 from connect import get_connection
 
+CSV_FILE = "contacts.csv"
+
+# Егер CSV файл жоқ болса, оны жасаймыз
+def ensure_csv_exists():
+    if not os.path.exists(CSV_FILE):
+        with open(CSV_FILE, mode="w", newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=["name","phone"])
+            writer.writeheader()
+            # Мысал үшін бірнеше жазба қосуға болады
+            writer.writerow({"name":"Alice","phone":"87012345678"})
+            writer.writerow({"name":"Bob","phone":"87771234567"})
+            writer.writerow({"name":"Charlie","phone":"87098765432"})
+        print(f"{CSV_FILE} файлы жасалды.")
+
+# Кесте жасау
 def create_table():
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS contacts (
-            id SERIAL PRIMARY KEY,
-            first_name VARCHAR(50),
-            last_name VARCHAR(50),
-            phone VARCHAR(20)
-        )
+    CREATE TABLE IF NOT EXISTS contacts (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100),
+        phone VARCHAR(20)
+    );
     """)
     conn.commit()
     cur.close()
     conn.close()
+    print("Кесте дайын.")
 
-def insert_contact(first_name, last_name, phone):
+# CSV файлдан деректер енгізу
+def import_from_csv(file_path=CSV_FILE):
+    ensure_csv_exists()  # Файл бар екеніне көз жеткіземіз
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO contacts (first_name, last_name, phone) VALUES (%s, %s, %s)",
-        (first_name, last_name, phone)
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-
-def insert_from_csv(filename='contacts.csv'):
-    conn = get_connection()
-    cur = conn.cursor()
-    with open(filename, newline='') as csvfile:
+    with open(file_path, newline='') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             cur.execute(
-                "INSERT INTO contacts (first_name, last_name, phone) VALUES (%s, %s, %s)",
-                (row['first_name'], row['last_name'], row['phone'])
+                "INSERT INTO contacts (name, phone) VALUES (%s, %s)",
+                (row['name'], row['phone'])
             )
     conn.commit()
     cur.close()
     conn.close()
+    print("CSV файлдан деректер импортталды.")
 
-def get_contacts_by_name(name):
+# Консольдан деректер енгізу
+def add_contact():
+    name = input("Аты: ")
+    phone = input("Телефон: ")
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM contacts WHERE first_name ILIKE %s OR last_name ILIKE %s",
-        (f"%{name}%", f"%{name}%")
-    )
-    results = cur.fetchall()
+    cur.execute("INSERT INTO contacts (name, phone) VALUES (%s, %s)", (name, phone))
+    conn.commit()
     cur.close()
     conn.close()
-    return results
+    print("Контакт қосылды.")
 
-def update_contact(old_name, new_name=None, new_phone=None):
+# Контакт жаңарту
+def update_contact():
+    id = input("Жаңартқыңыз келетін контакт ID: ")
+    new_name = input("Жаңа аты (қалдыру үшін Enter): ")
+    new_phone = input("Жаңа телефон (қалдыру үшін Enter): ")
+    
     conn = get_connection()
     cur = conn.cursor()
     if new_name:
-        cur.execute("UPDATE contacts SET first_name=%s WHERE first_name=%s", (new_name, old_name))
+        cur.execute("UPDATE contacts SET name = %s WHERE id = %s", (new_name, id))
     if new_phone:
-        cur.execute("UPDATE contacts SET phone=%s WHERE first_name=%s", (new_phone, old_name))
+        cur.execute("UPDATE contacts SET phone = %s WHERE id = %s", (new_phone, id))
     conn.commit()
     cur.close()
     conn.close()
+    print("Контакт жаңартылды.")
 
-def delete_contact(name=None, phone=None):
+# Контакт іздеу
+def search_contacts():
+    keyword = input("Іздеу сөзін енгізіңіз (аты немесе телефоны): ")
     conn = get_connection()
     cur = conn.cursor()
-    if name:
-        cur.execute("DELETE FROM contacts WHERE first_name=%s", (name,))
-    if phone:
-        cur.execute("DELETE FROM contacts WHERE phone=%s", (phone,))
-    conn.commit()
+    cur.execute(
+        "SELECT id, name, phone FROM contacts WHERE name ILIKE %s OR phone ILIKE %s",
+        (f"%{keyword}%", f"%{keyword}%")
+    )
+    rows = cur.fetchall()
+    for row in rows:
+        print(row)
     cur.close()
     conn.close()
 
-# Консольдік меню
+# Контакт жою
+def delete_contact():
+    id = input("Жою үшін контакт ID: ")
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM contacts WHERE id = %s", (id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("Контакт жойылды.")
+
+# Мәзір
 def menu():
-    create_table()
     while True:
         print("\n--- PhoneBook ---")
-        print("1. Контакт қосу")
-        print("2. CSV-тен импорт")
-        print("3. Контактілерді іздеу")
-        print("4. Контакт жаңарту")
-        print("5. Контакт өшіру")
+        print("1. Контакт қосу (консольдан)")
+        print("2. CSV файлдан импорт")
+        print("3. Контакт жаңарту")
+        print("4. Контакт іздеу")
+        print("5. Контакт жою")
         print("6. Шығу")
-        choice = input("Таңдаңыз (1-6): ")
-
-        if choice == "1":
-            first = input("Аты: ")
-            last = input("Тегі: ")
-            phone = input("Телефон: ")
-            insert_contact(first, last, phone)
-            print("Контакт қосылды!")
-        elif choice == "2":
-            insert_from_csv()
-            print("CSV импортталды!")
-        elif choice == "3":
-            name = input("Іздеу үшін аты немесе тегі: ")
-            results = get_contacts_by_name(name)
-            for r in results:
-                print(f"ID:{r[0]} | {r[1]} {r[2]} | {r[3]}")
-        elif choice == "4":
-            old = input("Ескі аты: ")
-            new_name = input("Жаңа аты (болмаса Enter): ")
-            new_phone = input("Жаңа телефон (болмаса Enter): ")
-            update_contact(old, new_name or None, new_phone or None)
-            print("Контакт жаңартылды!")
-        elif choice == "5":
-            name = input("Өшіру үшін аты (болмаса Enter): ")
-            phone = input("Телефон нөмірі (болмаса Enter): ")
-            delete_contact(name or None, phone or None)
-            print("Контакт өшірілді!")
-        elif choice == "6":
+        choice = input("Таңдауыңыз: ")
+        if choice == '1':
+            add_contact()
+        elif choice == '2':
+            import_from_csv()
+        elif choice == '3':
+            update_contact()
+        elif choice == '4':
+            search_contacts()
+        elif choice == '5':
+            delete_contact()
+        elif choice == '6':
             break
         else:
-            print("Қате таңдау!")
+            print("Қате таңдау.")
 
 if __name__ == "__main__":
+    create_table()
+    ensure_csv_exists()  # Бағдарлама басталғанда файл бар екеніне көз жеткіземіз
     menu()
