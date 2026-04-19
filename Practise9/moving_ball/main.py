@@ -46,6 +46,9 @@ def main():
             dx -= ball.step
         if pressed[pygame.K_RIGHT]:
             dx += ball.step
+        if pressed[pygame.K_z]:
+            dx -=ball.step
+            dy +=ball.step
 
         if dx != 0 or dy != 0:
             ball.move(dx, dy, WIDTH, HEIGHT)
