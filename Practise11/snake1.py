@@ -1,89 +1,268 @@
+# importing libraries
 import pygame
 import random
-import time
 
+snake_speed = 15
+level = 1
+
+# Window size
+window_x = 720
+window_y = 480
+
+# defining colors
+black = pygame.Color(0, 0, 0)
+white = pygame.Color(255, 255, 255)
+red = pygame.Color(255, 0, 0)
+green = pygame.Color(0, 255, 0)
+blue = pygame.Color(0, 0, 255)
+yellow = pygame.Color(255, 255, 0)
+
+#food types
+food_types = [
+    {"color": red, "value": 10},  
+    {"color": yellow, "value": 20},  
+    {"color": blue, "value": 30}    
+]
+
+# Initialising pygame
 pygame.init()
 
-WIDTH, HEIGHT = 600, 400
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+# Initialise game window
+pygame.display.set_caption('Snake Game')
+game_window = pygame.display.set_mode((window_x, window_y))
 
-clock = pygame.time.Clock()
+# FPS (frames per second) controller
+fps = pygame.time.Clock()
 
-snake = [(100, 100)]
-direction = "RIGHT"
-block = 20
+food_lifetime = 5000  # milliseconds
+food_spawn_time = 0
 
-score = 0
-
-# Food генерация
-def generate_food():
+def spawn_food():
+    food_type = random.choice(food_types)
     return {
-        "pos": (random.randrange(0, WIDTH, block),
-                random.randrange(0, HEIGHT, block)),
-        "value": random.choice([1, 2, 3]),
-        "spawn_time": time.time()
+        "position": [random.randrange(1, (window_x//10)) * 10,
+                     random.randrange(1, (window_y//10)) * 10],
+        "color": food_type["color"],
+        "value": food_type["value"]
     }
 
-food = generate_food()
+def reset_game():
+    global snake_position, snake_body
+    global fruit_spawn, direction, change_to, score
+    global level, snake_speed
+    global current_food, food_spawn_time
+    
+    # defining snake default position
+    snake_position = [100, 50]
 
-running = True
-while running:
-    screen.fill((255, 255, 255))
+    # defining first 4 blocks of snake body
+    snake_body = [[100, 50],
+                  [90, 50],
+                  [80, 50],
+                  [70, 50]
+                  ]
 
+    # fruit position --------------------------------------------------
+    current_food = spawn_food()
+    food_spawn_time = pygame.time.get_ticks()
+    
+    fruit_spawn = True
+
+    # setting default snake direction towards right
+    direction = 'RIGHT'
+    change_to = direction
+
+    # initial score
+    score = 0
+    level = 1
+    snake_speed = 15
+
+
+reset_game()
+
+# displaying Score function
+def show_score(choice, color, font, size):
+  
+    # creating font object score_font
+    score_font = pygame.font.SysFont(font, size)
+    
+    # create the display surface object 
+    # score_surface
+    score_surface = score_font.render('Score : ' + str(score), True, color)
+    
+    # create a rectangular object for the text
+    # surface object
+    score_rect = score_surface.get_rect()
+    
+    # displaying text
+    game_window.blit(score_surface, score_rect)
+    
+    level_font = pygame.font.SysFont(font, size)
+    level_surface = level_font.render('Level : ' + str(level), True, color) #-----------------------------
+    game_window.blit(level_surface, (1, 18))
+    
+    timer_surface = score_font.render('Timer : ' + str(time_left), True, color)
+    game_window.blit(timer_surface, (1, 100))    
+    
+    for index, food in enumerate(food_types):
+        y = 45 + index * 22
+        pygame.draw.rect(game_window, food["color"], pygame.Rect(5, y, 12, 12))
+        
+        value_surface = score_font.render(str(food["value"]), True, white)
+        game_window.blit(value_surface, (24, y - 6))
+        
+        dop_surface = score_font.render("-", True, white)
+        game_window.blit(dop_surface, (17, y - 8))
+
+# game over function
+def game_over():
+    
+    # creating font object my_font
+    my_font = pygame.font.SysFont('times new roman', 50)
+    restart_font = pygame.font.SysFont('times new roman', 25)
+    
+    # creating a text surface on which text 
+    # will be drawn
+    game_over_surface = my_font.render(
+        'Your Score is : ' + str(score), True, red)
+    restart_surface = restart_font.render(
+        'Press R to restart or Q to quit', True, white)
+
+    game_over_surface_level= my_font.render(
+        'Your Level is : ' + str(level), True, red) #-----------------------------
+    
+    
+    
+    # create a rectangular object for the text 
+    # surface object
+    game_over_rect = game_over_surface.get_rect()
+    restart_rect = restart_surface.get_rect()
+    game_over_surface_level_rect = game_over_surface_level.get_rect()
+    # setting position of the text
+    game_over_rect.midtop = (360, 120)
+    restart_rect.midtop = (360, 240)
+    game_over_surface_level_rect.midtop = (360, 160) #-----------------------------
+
+    while True:
+        game_window.fill(black)
+        game_window.blit(game_over_surface, game_over_rect)
+        game_window.blit(restart_surface, restart_rect)
+        game_window.blit(game_over_surface_level, game_over_surface_level_rect)
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    reset_game()
+                    return
+                if event.key == pygame.K_q:
+                    pygame.quit()
+                    quit()
+
+        fps.tick(15)
+
+
+# Main Function
+while True:
+    
+    level = score // 30 + 1
+    snake_speed = 15 + (level - 1) * 5 #---------------------------------------------
+
+    
+    # handling key events
     for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
         if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                change_to = 'UP'
+            if event.key == pygame.K_DOWN:
+                change_to = 'DOWN'
             if event.key == pygame.K_LEFT:
-                direction = "LEFT"
-            elif event.key == pygame.K_RIGHT:
-                direction = "RIGHT"
-            elif event.key == pygame.K_UP:
-                direction = "UP"
-            elif event.key == pygame.K_DOWN:
-                direction = "DOWN"
+                change_to = 'LEFT'
+            if event.key == pygame.K_RIGHT:
+                change_to = 'RIGHT'
 
-    head_x, head_y = snake[0]
+    # If two keys pressed simultaneously
+    # we don't want snake to move into two 
+    # directions simultaneously
+    if change_to == 'UP' and direction != 'DOWN':
+        direction = 'UP'
+    if change_to == 'DOWN' and direction != 'UP':
+        direction = 'DOWN'
+    if change_to == 'LEFT' and direction != 'RIGHT':
+        direction = 'LEFT'
+    if change_to == 'RIGHT' and direction != 'LEFT':
+        direction = 'RIGHT'
 
-    # Қозғалыс
-    if direction == "LEFT":
-        head_x -= block
-    elif direction == "RIGHT":
-        head_x += block
-    elif direction == "UP":
-        head_y -= block
-    elif direction == "DOWN":
-        head_y += block
+    # Moving the snake
+    if direction == 'UP':
+        snake_position[1] -= 10
+    if direction == 'DOWN':
+        snake_position[1] += 10
+    if direction == 'LEFT':
+        snake_position[0] -= 10
+    if direction == 'RIGHT':
+        snake_position[0] += 10
 
-    snake.insert(0, (head_x, head_y))
+    current_time = pygame.time.get_ticks()
 
-    # Food жеу
-    if snake[0] == food["pos"]:
-        score += food["value"]
-        food = generate_food()
+    time_left = max(0, food_lifetime - (current_time - food_spawn_time)) // 1000
+
+    if current_time - food_spawn_time >= food_lifetime:
+        current_food = spawn_food()
+        food_spawn_time = current_time
+
+
+
+    # Snake body growing mechanism
+    # if fruits and snakes collide then scores
+    # will be incremented by 10
+    snake_body.insert(0, list(snake_position))
+    if snake_position[0] == current_food["position"][0] and snake_position[1] == current_food["position"][1]:
+        score += current_food["value"]
+        fruit_spawn = False
+        food_spawn_time = pygame.time.get_ticks()  # Reset food spawn timer
     else:
-        snake.pop()
+        snake_body.pop()
+        
+    if not fruit_spawn: #-------------------------------------
+        current_food = spawn_food()
+    fruit_spawn = True   #---------------------------------
+    game_window.fill(black)
+    
+    for pos in snake_body:
+        pygame.draw.rect(game_window, green,
+                         pygame.Rect(pos[0], pos[1], 10, 10))
+    pygame.draw.rect(game_window, current_food["color"], pygame.Rect(
+        current_food["position"][0], current_food["position"][1], 10, 10))
+    
 
-    # Food timer (5 секунд)
-    if time.time() - food["spawn_time"] > 5:
-        food = generate_food()
+    
+        
+    # Game Over conditions ----------------------------------
+    game_over_triggered = False
+    if snake_position[0] < 0 or snake_position[0] > window_x-10:
+        game_over_triggered = True
+    if snake_position[1] < 0 or snake_position[1] > window_y-10:
+        game_over_triggered = True
 
-    # Draw snake
-    for s in snake:
-        pygame.draw.rect(screen, (0, 200, 0), (*s, block, block))
+    # Touching the snake body
+    for block in snake_body[1:]:
+        if snake_position[0] == block[0] and snake_position[1] == block[1]:
+            game_over_triggered = True
+            break
 
-    # Food түсі value-ға байланысты
-    if food["value"] == 1:
-        color = (255, 0, 0)
-    elif food["value"] == 2:
-        color = (0, 0, 255)
-    else:
-        color = (255, 165, 0)
+    if game_over_triggered:
+        game_over()
+        continue
 
-    pygame.draw.rect(screen, color, (*food["pos"], block, block))
+    # displaying score continuously
+    show_score(1, white, 'times new roman', 20)
 
-    pygame.display.flip()
-    clock.tick(10)
+    # Refresh game screen
+    pygame.display.update()
 
-pygame.quit()
+    # Frame Per Second /Refresh Rate
+    fps.tick(snake_speed)
