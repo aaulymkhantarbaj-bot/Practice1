@@ -84,7 +84,7 @@ class Coin(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.image = load_image("Enemy.png")
+        self.image = load_image("Player.png")
         self.rect = self.image.get_rect()
         self.rect.center = (random.randint(40, SCREEN_WIDTH-40), 0)
 
@@ -98,7 +98,7 @@ class Enemy(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.image = load_image("Player.png")
+        self.image = load_image("Enemy.png")
         self.rect = self.image.get_rect()
         self.rect.center = (160, 520)
 
